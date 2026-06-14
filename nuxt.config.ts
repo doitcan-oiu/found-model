@@ -48,6 +48,18 @@ export default defineNuxtConfig({
     }
   },
 
+  nitro: {
+    // node:sqlite 为 Node 内置模块，标记为外部依赖，避免打包并消除解析警告
+    externals: {
+      external: ['node:sqlite']
+    },
+    rollupConfig: {
+      external: ['node:sqlite']
+    },
+    // 关闭服务端 sourcemap，降低构建内存占用
+    sourceMap: false
+  },
+
   routeRules: {
     '/': { prerender: true },
     // 仪表盘
