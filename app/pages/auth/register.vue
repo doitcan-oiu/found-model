@@ -1,3 +1,53 @@
+<script setup>
+const message = useMessage()
+
+const form = reactive({
+  username: '',
+  email: '',
+  password: '',
+  confirmPassword: ''
+})
+
+const loading = ref(false)
+const token = ref('')
+const turnstile = ref()
+
+async function onSubmit() {
+  if (form.password !== form.confirmPassword) {
+    message.error('密码不一致', '两次输入的密码不一致')
+    return
+  }
+  if (!token.value) {
+    message.error('请完成人机验证')
+    return
+  }
+
+  loading.value = true
+  try {
+    await $fetch('/api/auth/register', {
+      method: 'POST',
+      body: {
+        username: form.username,
+        email: form.email,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+        token: token.value
+      }
+    })
+    message.success('注册成功', '正在跳转登录…')
+    setTimeout(() => navigateTo('/auth/login'), 1000)
+  } catch (err) {
+    const msg = err?.data?.data?.message || err?.data?.message || '注册失败，请稍后重试'
+    message.error('注册失败', msg)
+    // 验证 token 单次有效，失败后重置
+    turnstile.value?.reset()
+    token.value = ''
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
 <template>
   <div class="flex min-h-screen items-center justify-center bg-white px-6 py-12 text-[#212121] antialiased">
     <div class="w-full max-w-md">
@@ -9,12 +59,13 @@
 
       <!-- 表单卡片 -->
       <div class="mt-8 rounded-lg border border-[#e5e7eb] bg-white p-8">
-        <form class="space-y-5">
+        <form class="space-y-5" @submit.prevent="onSubmit">
           <!-- 账号 -->
           <div>
             <label for="account" class="text-[14px] leading-[1.4] text-[#17171c]">账号</label>
             <input
               id="account"
+              v-model="form.username"
               type="text"
               autocomplete="username"
               placeholder="请输入账号"
@@ -27,6 +78,7 @@
             <label for="email" class="text-[14px] leading-[1.4] text-[#17171c]">邮箱</label>
             <input
               id="email"
+              v-model="form.email"
               type="email"
               autocomplete="email"
               placeholder="you@example.com"
@@ -39,6 +91,7 @@
             <label for="password" class="text-[14px] leading-[1.4] text-[#17171c]">密码</label>
             <input
               id="password"
+              v-model="form.password"
               type="password"
               autocomplete="new-password"
               placeholder="请输入密码"
@@ -52,6 +105,7 @@
             <label for="confirm-password" class="text-[14px] leading-[1.4] text-[#17171c]">确认密码</label>
             <input
               id="confirm-password"
+              v-model="form.confirmPassword"
               type="password"
               autocomplete="new-password"
               placeholder="请再次输入密码"
@@ -59,12 +113,26 @@
             />
           </div>
 
+          <!-- 人机验证（预留固定尺寸，加载时显示骨架，避免页面跳动） -->
+          <div class="flex justify-center">
+            <div class="relative h-[65px] w-[300px]">
+              <div class="absolute inset-0 animate-pulse rounded-[4px] bg-[#eeece7]"></div>
+              <NuxtTurnstile
+                ref="turnstile"
+                v-model="token"
+                class="relative"
+                :options="{ appearance: 'always', theme: 'light', language: 'zh-cn' }"
+              />
+            </div>
+          </div>
+
           <!-- 提交 -->
           <button
             type="submit"
-            class="w-full rounded-[32px] bg-[#17171c] px-6 py-3 text-[14px] font-medium leading-[1.71] text-white transition-colors hover:bg-black"
+            :disabled="loading"
+            class="w-full rounded-[32px] bg-[#17171c] px-6 py-3 text-[14px] font-medium leading-[1.71] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
           >
-            注册
+            {{ loading ? '注册中…' : '注册' }}
           </button>
         </form>
 

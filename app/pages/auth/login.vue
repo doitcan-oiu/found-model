@@ -1,3 +1,35 @@
+<script setup>
+const { login } = useAuth()
+const message = useMessage()
+
+const form = reactive({
+  username: '',
+  password: '',
+  remember: false
+})
+
+const loading = ref(false)
+
+async function onSubmit() {
+  if (!form.username || !form.password) {
+    message.error('请填写完整', '账号和密码不能为空')
+    return
+  }
+
+  loading.value = true
+  try {
+    await login({ username: form.username, password: form.password })
+    message.success('登录成功', '正在进入控制台…')
+    await navigateTo('/dashboard')
+  } catch (err) {
+    const msg = err?.data?.data?.message || err?.data?.message || '账号或密码错误'
+    message.error('登录失败', msg)
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
 <template>
   <div class="min-h-screen bg-white text-[#212121] antialiased lg:grid lg:grid-cols-2">
     <!-- 左侧品牌展示面板 -->
@@ -48,12 +80,13 @@
 
         <!-- 表单卡片 -->
         <div class="mt-8 rounded-lg border border-[#e5e7eb] bg-white p-8">
-          <form class="space-y-5">
+          <form class="space-y-5" @submit.prevent="onSubmit">
             <!-- 账号 / 邮箱 -->
             <div>
               <label for="account" class="text-[14px] leading-[1.4] text-[#17171c]">账号 / 邮箱</label>
               <input
                 id="account"
+                v-model="form.username"
                 type="text"
                 autocomplete="username"
                 placeholder="请输入账号或邮箱"
@@ -69,6 +102,7 @@
               </div>
               <input
                 id="password"
+                v-model="form.password"
                 type="password"
                 autocomplete="current-password"
                 placeholder="请输入密码"
@@ -78,16 +112,17 @@
 
             <!-- 记住我 -->
             <label class="flex cursor-pointer items-center gap-2 text-[14px] leading-[1.4] text-[#616161]">
-              <input type="checkbox" class="h-4 w-4 rounded-[4px] border-[#d9d9dd] accent-[#003c33]" />
+              <input v-model="form.remember" type="checkbox" class="h-4 w-4 rounded-[4px] border-[#d9d9dd] accent-[#003c33]" />
               记住我
             </label>
 
             <!-- 提交 -->
             <button
               type="submit"
-              class="w-full rounded-[32px] bg-[#17171c] px-6 py-3 text-[14px] font-medium leading-[1.71] text-white transition-colors hover:bg-black"
+              :disabled="loading"
+              class="w-full rounded-[32px] bg-[#17171c] px-6 py-3 text-[14px] font-medium leading-[1.71] text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
             >
-              登录
+              {{ loading ? '登录中…' : '登录' }}
             </button>
           </form>
         </div>
